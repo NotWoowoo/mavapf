@@ -1,5 +1,5 @@
 #pragma once
 
-#include "host.h"
-#include "plugin.h"
-#include "parameter.h"
+#include "mavapf/host.h"
+#include "mavapf/plugin.h"
+#include "mavapf/parameter.h"
