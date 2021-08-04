@@ -7,7 +7,7 @@ Plugin::Plugin(int numParams, int numInputChannels, int numOutputChannels)
 }
 
 Plugin::~Plugin(){
-	delete parameters;
+	delete[] parameters;
 }
 
 void Plugin::processAudioBlock(double** inputs, double** outputs, int numSamples){
@@ -21,4 +21,20 @@ void Plugin::processAudioBlock(double** inputs, double** outputs, int numSamples
 		outL[i] = inL[i];
 		outR[i] = inR[i];
 	}
+}
+
+int Plugin::getNumInputChannels() {
+	return numInputChannels;
+}
+
+int Plugin::getNumOutputChannels() {
+	return numOutputChannels;
+}
+
+int Plugin::getNumParams() {
+	return numParams;
+}
+
+Parameter *Plugin::getParam(int index) {
+	return &(parameters[index]);
 }

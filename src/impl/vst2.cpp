@@ -1,13 +1,7 @@
 #include <stdlib.h>
-#include <stdio.h>
+#include <stdio.h> //io only works when testing with a CLI host like mrswatson
 #include <aeffectx.h>
 #include "mavapf/plugin.h"
-
-#include <windows.h>
-#include <math.h>
-	
-float param = 0.5;
-float phase = 0;
 	
 audioMasterCallback hostCallback;
 
@@ -18,8 +12,21 @@ VstIntPtr VSTCALLBACK dispatcherProc (AEffect* effect, VstInt32 opcode, VstInt32
 		break;
 		
 		case effClose:
+			delete ((Plugin*) effect->object);
 			free(effect);
 		break;
+		
+		//case effGetParamLabel:
+			//strncpy((char *)(ptr), ((Plugin*) effect->object)->getParam(index)->getLabel(), kVstMaxParamStrLen);
+		//break;
+		
+		//case effGetParamDisplay:
+			//strncpy((char *)(ptr), ((Plugin*) effect->object)->getParam(index)->getLabel(), kVstMaxParamStrLen);
+		//break;
+		
+		//case effGetParamName:
+			//strncpy((char *)(ptr), ((Plugin*) effect->object)->getParam(index)->getLabel(), kVstMaxParamStrLen);
+		//break;
 		
 		case effGetPlugCategory:
 			return kPlugCategEffect;
@@ -28,17 +35,13 @@ VstIntPtr VSTCALLBACK dispatcherProc (AEffect* effect, VstInt32 opcode, VstInt32
 		case effGetVendorString:
 			strncpy((char *)(ptr), "woow", kVstMaxVendorStrLen);
 		break;
-	 
-		// request for the version
-		case effGetVendorVersion:
-			return 1000;
 			
 		case effSetSampleRate:
 			printf("sample rate: %f \n", opt);
 		break;
 		
 		case effSetBlockSize:
-			printf("block size: %i \n", value);
+			printf("block size: %i \n", (int)value);
 		break;
 		
 		case effCanBeAutomated:
@@ -46,6 +49,10 @@ VstIntPtr VSTCALLBACK dispatcherProc (AEffect* effect, VstInt32 opcode, VstInt32
 			
 		case effEditClose:
 			
+		break;
+		
+		case effGetVstVersion:
+			return 2400;
 		break;
 			
 		// ignoring all other opcodes
@@ -58,31 +65,44 @@ VstIntPtr VSTCALLBACK dispatcherProc (AEffect* effect, VstInt32 opcode, VstInt32
 }
 
 void VSTCALLBACK setParameterProc (AEffect* effect, VstInt32 index, float parameter){
-	param = parameter;
+	((Plugin*) effect->object)->getParam(index)->setValue(parameter);
 }
 
 float VSTCALLBACK getParameterProc (AEffect* effect, VstInt32 index){
-	return param;
+	return ((Plugin*) effect->object)->getParam(index)->getValue();
 }
 
 void VSTCALLBACK processProc (AEffect* effect, float** inputs, float** outputs, VstInt32 sampleFrames){
-	float *inL = inputs[0];
-	float *inR = inputs[1];
+	const int numIn = ((Plugin*) effect->object)->getNumInputChannels();
+	const int numOut = ((Plugin*) effect->object)->getNumOutputChannels();
+	const int numFrames = sampleFrames;
 	
-	float *outL = outputs[0];
-	float *outR = outputs[1];
+	double **dInputs = new double*[numIn];
+	for(int i = 0; i < numIn; ++i)
+		dInputs[i] = new double[numFrames];
 	
-	for(int i = 0; i < sampleFrames; ++i){
-		outL[i]=outR[i] = 0.1*sinf(phase);
-		phase += param*16*440/44100.f;
-	}
+	double **dOutputs = new double*[numOut];
+	for(int i = 0; i < numOut; ++i)
+		dOutputs[i] = new double[numFrames];
+	
+	for(int n = 0; n < numIn; ++n)
+		for(int s = 0; s < numFrames; ++s)
+			dInputs[n][s] = (double)inputs[n][s];
+	
+	((Plugin*) effect->object)->processAudioBlock(dInputs, dOutputs, numFrames);
+	
+	for(int n = 0; n < numOut; ++n)
+		for(int s = 0; s < numFrames; ++s)
+			outputs[n][s] = (float)dOutputs[n][s];
 }
 
 void VSTCALLBACK processDoubleProc (AEffect* effect, double** inputs, double** outputs, VstInt32 sampleFrames){
-	
+	((Plugin*) effect->object)->processAudioBlock(inputs, outputs, (int)sampleFrames);
 }
 
 extern "C" __declspec(dllexport) AEffect *VSTPluginMain(audioMasterCallback vstHostCallback){
+	Plugin *pluginInstance = createPluginInstance();
+	
 	hostCallback = vstHostCallback;
 	
 	AEffect *effectInstance = (AEffect *)malloc(sizeof(AEffect));
@@ -95,15 +115,15 @@ extern "C" __declspec(dllexport) AEffect *VSTPluginMain(audioMasterCallback vstH
 	effectInstance->processDoubleReplacing = processDoubleProc;
 	
 	effectInstance->numPrograms = 0;   
-	effectInstance->numParams = 1;		
-	effectInstance->numInputs = 2;		
-	effectInstance->numOutputs = 2;	
+	effectInstance->numParams = pluginInstance->getNumParams();		
+	effectInstance->numInputs = pluginInstance->getNumInputChannels();		
+	effectInstance->numOutputs = pluginInstance->getNumOutputChannels();	
 	
-	effectInstance->flags = effFlagsCanReplacing | effFlagsHasEditor;
+	effectInstance->flags = effFlagsCanReplacing | effFlagsCanDoubleReplacing;
 	
 	effectInstance->initialDelay = 0;
 	
-	effectInstance->object = effectInstance;
+	effectInstance->object = pluginInstance;
 	//effectInstance->user = NULL;
 	
 	//effectInstance->uniqueID = 'woow';

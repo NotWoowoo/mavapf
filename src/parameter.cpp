@@ -6,7 +6,7 @@ Parameter::Parameter(){
 	units = nullptr;
 }
 
-void Parameter::setValue(double v){
+void Parameter::setValue(float v){
 	value = v;
 }
 

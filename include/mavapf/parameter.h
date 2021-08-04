@@ -4,7 +4,7 @@ class Parameter{
 public:
 	Parameter();
 	
-	void setValue(double value);
+	void setValue(float value);
 	float getValue();
 	
 	void setLabel(const char *label);

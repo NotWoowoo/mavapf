@@ -10,15 +10,23 @@ enum myParams{
 class myPlugin : public Plugin {
 public:
 	myPlugin()
-		: Plugin(pNumParams, 3, 4)
+		: Plugin(pNumParams, 2, 2)
 	{
-		//impl
-		parameters[pFreq].setLabel("freq");
+		getParam(pFreq)->setLabel("freq");
 	}
 	
-	//void processAudioBlock(double** inputs, double** outputs, int numSamples) override{
-		//impl
-	//}
+	void processAudioBlock(double** inputs, double** outputs, int numSamples) override{
+		double *inL = inputs[0];
+		double *inR = inputs[1];
+		
+		double *outL = outputs[0];
+		double *outR = outputs[1];
+		
+		for(int i = 0; i < numSamples; ++i){
+			outL[i] = inL[i] * getParam(pFreq)->getValue();
+			outR[i] = inR[i] * getParam(pFreq)->getValue();
+		}
+	}
 };
 
 Plugin *createPluginInstance(){

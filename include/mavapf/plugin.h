@@ -4,7 +4,6 @@
 
 class Plugin{
 public:
-
 	Plugin(int numParams, int numInputChannels = 2, int numOutputChannels = 2);
 	
 	~Plugin();
@@ -12,13 +11,21 @@ public:
 	virtual void processAudioBlock(double** inputs, double** outputs, int numSamples);
 	
 	
-	const int numInputChannels;
+	virtual int getNumInputChannels() final;
+	virtual int getNumOutputChannels() final;
 	
-	const int numOutputChannels;
+	virtual int getNumParams() final;
 	
-	const int numParams;
+	virtual Parameter *getParam(int index) final;
 	
-	Parameter* parameters;
+private:
+	int numInputChannels;
+	
+	int numOutputChannels;
+	
+	int numParams;
+	
+	Parameter *parameters;
 };
 
 Plugin *createPluginInstance();
