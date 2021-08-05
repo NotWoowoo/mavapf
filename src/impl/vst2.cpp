@@ -17,16 +17,18 @@ VstIntPtr VSTCALLBACK dispatcherProc (AEffect* effect, VstInt32 opcode, VstInt32
 		break;
 		
 		//case effGetParamLabel:
-			//strncpy((char *)(ptr), ((Plugin*) effect->object)->getParam(index)->getLabel(), kVstMaxParamStrLen);
+			//strncpy((char *)(ptr), "label", kVstMaxParamStrLen);
 		//break;
 		
 		//case effGetParamDisplay:
-			//strncpy((char *)(ptr), ((Plugin*) effect->object)->getParam(index)->getLabel(), kVstMaxParamStrLen);
+			//strncpy((char *)(ptr), "disp", kVstMaxParamStrLen);
 		//break;
 		
-		//case effGetParamName:
-			//strncpy((char *)(ptr), ((Plugin*) effect->object)->getParam(index)->getLabel(), kVstMaxParamStrLen);
-		//break;
+		case effGetParamName: {
+			const char* name = ((Plugin*)effect->object)->getParam(index)->getLabel();
+			if(name)
+				strncpy((char *)(ptr), name, kVstMaxParamStrLen);
+		} break;
 		
 		case effGetPlugCategory:
 			return kPlugCategEffect;
@@ -73,6 +75,8 @@ float VSTCALLBACK getParameterProc (AEffect* effect, VstInt32 index){
 }
 
 void VSTCALLBACK processProc (AEffect* effect, float** inputs, float** outputs, VstInt32 sampleFrames){
+	//Do this more eloquently later --
+	//Have a single array of numIn*sampleFrames doubles
 	const int numIn = ((Plugin*) effect->object)->getNumInputChannels();
 	const int numOut = ((Plugin*) effect->object)->getNumOutputChannels();
 	const int numFrames = sampleFrames;
@@ -94,6 +98,15 @@ void VSTCALLBACK processProc (AEffect* effect, float** inputs, float** outputs, 
 	for(int n = 0; n < numOut; ++n)
 		for(int s = 0; s < numFrames; ++s)
 			outputs[n][s] = (float)dOutputs[n][s];
+
+	for(int n = 0; n < numIn; ++n)
+		delete[] dInputs[n];
+
+	for(int n = 0; n < numOut; ++n)
+		delete[] dOutputs[n];
+
+	delete[] dInputs;
+	delete[] dOutputs;
 }
 
 void VSTCALLBACK processDoubleProc (AEffect* effect, double** inputs, double** outputs, VstInt32 sampleFrames){
