@@ -2,18 +2,26 @@
 #include <stdio.h> //io only works when testing with a CLI host like mrswatson
 #include <aeffectx.h>
 #include "mavapf/plugin.h"
+extern mavapfFunc envInitFunc; //from plugin.cpp
+extern mavapfFunc envUninitFunc; //from plugin.cpp
+#include "mavapf/host.h"
+
+int pluginInstanceCount = 0;
 	
 audioMasterCallback hostCallback;
 
 VstIntPtr VSTCALLBACK dispatcherProc (AEffect* effect, VstInt32 opcode, VstInt32 index, VstIntPtr value, void* ptr, float opt){
 	switch(opcode){
 		case effOpen:
-			
+			if(pluginInstanceCount == 1 && envInitFunc != nullptr) envInitFunc();
 		break;
 		
 		case effClose:
 			delete ((Plugin*) effect->object);
 			free(effect);
+
+			if (pluginInstanceCount == 1 && envUninitFunc != nullptr) envUninitFunc();
+			--pluginInstanceCount;
 		break;
 		
 		//case effGetParamLabel:
@@ -114,6 +122,7 @@ void VSTCALLBACK processDoubleProc (AEffect* effect, double** inputs, double** o
 }
 
 extern "C" __declspec(dllexport) AEffect *VSTPluginMain(audioMasterCallback vstHostCallback){
+	++pluginInstanceCount;
 	Plugin *pluginInstance = createPluginInstance();
 	
 	hostCallback = vstHostCallback;
@@ -143,4 +152,10 @@ extern "C" __declspec(dllexport) AEffect *VSTPluginMain(audioMasterCallback vstH
 	effectInstance->version = 1000;
 	
 	return effectInstance;
+}
+
+//host.h IMPLIMENTATION//.......................
+
+int getNumOpenPluginInstances() {
+	return pluginInstanceCount;
 }

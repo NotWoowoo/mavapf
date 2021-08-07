@@ -1,5 +1,16 @@
 #include "mavapf/plugin.h"
 
+mavapfFunc envInitFunc = nullptr;
+mavapfFunc envUninitFunc = nullptr;
+
+void setEnvironmentInitFunc(mavapfFunc func) {
+	envInitFunc = func;
+}
+
+void setEnvironmentUninitFunc(mavapfFunc func) {
+	envUninitFunc = func;
+}
+
 Plugin::Plugin(int numParams, int numInputChannels, int numOutputChannels)
 	: numParams(numParams), numInputChannels(numInputChannels), numOutputChannels(numOutputChannels)
 {

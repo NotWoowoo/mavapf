@@ -2,11 +2,13 @@
 
 #include "mavapf/parameter.h"
 
+typedef void (*mavapfFunc)(void);
+
 class Plugin{
 public:
 	Plugin(int numParams, int numInputChannels = 2, int numOutputChannels = 2);
 	
-	~Plugin();
+	virtual ~Plugin();
 	
 	virtual void processAudioBlock(double** inputs, double** outputs, int numSamples);
 	
@@ -29,3 +31,6 @@ private:
 };
 
 Plugin *createPluginInstance();
+
+void setEnvironmentInitFunc(mavapfFunc func);
+void setEnvironmentUninitFunc(mavapfFunc func);
