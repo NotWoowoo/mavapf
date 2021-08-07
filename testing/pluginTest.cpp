@@ -14,10 +14,11 @@ public:
 	myPlugin()
 		: Plugin(pNumParams, 2, 2)
 	{
-		getParam(pAmp)->setLabel("Ampl");
-		getParam(pAmp)->setValue(0.1f);
-		getParam(pFreq)->setLabel("freq");
-		getParam(pFreq)->setValue(0.1);
+		setParamLabel(pAmp, "Ampl");
+		setParamValue(pAmp, 0.1f);
+
+		setParamLabel(pFreq, "freq");
+		setParamValue(pFreq, 0.1f);
 	}
 
 	void processAudioBlock(double** inputs, double** outputs, int numSamples) override{

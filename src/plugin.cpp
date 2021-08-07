@@ -46,6 +46,31 @@ int Plugin::getNumParams() {
 	return numParams;
 }
 
-Parameter *Plugin::getParam(int index) {
-	return &(parameters[index]);
+void Plugin::hostNotifyParameterChange(int index, float value) {
+
+}
+
+void Plugin::setParamValue(int index, float value) {
+	hostNotifyParameterChange(index, value);
+	parameters[index].value = value;
+}
+
+float Plugin::getParamValue(int index) {
+	return parameters[index].value;
+}
+
+void Plugin::setParamLabel(int index, const char* label) {
+	parameters[index].label = label;
+}
+
+const char* Plugin::getParamLabel(int index) {
+	return parameters[index].label;
+}
+
+void Plugin::setParamUnits(int index, const char* units) {
+	parameters[index].units = units;
+}
+
+const char* Plugin::getParamUnits(int index) {
+	return parameters[index].units;
 }

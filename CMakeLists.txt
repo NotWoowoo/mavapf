@@ -11,7 +11,6 @@ target_include_directories(vst2 INTERFACE "deps/vst2")
 #define mavapf as a library. Specifically an OBJECT library, b/c linking PLUGIN against it actually just adds mavapf's sources and includes to PLUGIN
 add_library(mavapf OBJECT
 	"src/plugin.cpp"
-	"src/parameter.cpp"
 	"src/impl/vst2.cpp"
 )
 target_include_directories(mavapf PUBLIC "include")

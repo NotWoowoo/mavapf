@@ -33,7 +33,7 @@ VstIntPtr VSTCALLBACK dispatcherProc (AEffect* effect, VstInt32 opcode, VstInt32
 		//break;
 		
 		case effGetParamName: {
-			const char* name = ((Plugin*)effect->object)->getParam(index)->getLabel();
+			const char* name = ((Plugin*)effect->object)->getParamLabel(index);
 			if(name)
 				strncpy((char *)(ptr), name, kVstMaxParamStrLen);
 		} break;
@@ -75,11 +75,11 @@ VstIntPtr VSTCALLBACK dispatcherProc (AEffect* effect, VstInt32 opcode, VstInt32
 }
 
 void VSTCALLBACK setParameterProc (AEffect* effect, VstInt32 index, float parameter){
-	((Plugin*) effect->object)->getParam(index)->setValue(parameter);
+	((Plugin*) effect->object)->setParamValue(index, parameter);
 }
 
 float VSTCALLBACK getParameterProc (AEffect* effect, VstInt32 index){
-	return ((Plugin*) effect->object)->getParam(index)->getValue();
+	return ((Plugin*) effect->object)->getParamValue(index);
 }
 
 void VSTCALLBACK processProc (AEffect* effect, float** inputs, float** outputs, VstInt32 sampleFrames){
@@ -128,6 +128,9 @@ extern "C" __declspec(dllexport) AEffect *VSTPluginMain(audioMasterCallback vstH
 	hostCallback = vstHostCallback;
 	
 	AEffect *effectInstance = (AEffect *)malloc(sizeof(AEffect));
+
+	if(!effectInstance) return nullptr;
+
 	effectInstance->magic = kEffectMagic;
 	
 	effectInstance->dispatcher = dispatcherProc;
@@ -159,3 +162,5 @@ extern "C" __declspec(dllexport) AEffect *VSTPluginMain(audioMasterCallback vstH
 int getNumOpenPluginInstances() {
 	return pluginInstanceCount;
 }
+
+//hostCallback(AEffect * effect, VstInt32 opcode, VstInt32 index, VstIntPtr value, void* ptr, float opt);
