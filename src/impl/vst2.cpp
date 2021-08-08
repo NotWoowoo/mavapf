@@ -2,11 +2,12 @@
 #include <stdio.h> //io only works when testing with a CLI host like mrswatson
 #include <aeffectx.h>
 #include "mavapf/plugin.h"
-extern mavapfFunc envInitFunc; //from plugin.cpp
-extern mavapfFunc envUninitFunc; //from plugin.cpp
 #include "mavapf/host.h"
 
 int pluginInstanceCount = 0;
+
+mavapfFunc envInitFunc = nullptr;
+mavapfFunc envUninitFunc = nullptr;
 	
 audioMasterCallback hostCallback;
 
@@ -125,11 +126,12 @@ extern "C" __declspec(dllexport) AEffect *VSTPluginMain(audioMasterCallback vstH
 	++pluginInstanceCount;
 	Plugin *pluginInstance = createPluginInstance();
 	
-	hostCallback = vstHostCallback;
-	
 	AEffect *effectInstance = (AEffect *)malloc(sizeof(AEffect));
-
 	if(!effectInstance) return nullptr;
+
+	setInternalPluginInstance(pluginInstance, effectInstance);
+
+	hostCallback = vstHostCallback;
 
 	effectInstance->magic = kEffectMagic;
 	
@@ -158,9 +160,23 @@ extern "C" __declspec(dllexport) AEffect *VSTPluginMain(audioMasterCallback vstH
 }
 
 //host.h IMPLIMENTATION//.......................
+void setEnvironmentInitFunc(mavapfFunc func) {
+	envInitFunc = func;
+}
+
+void setEnvironmentUninitFunc(mavapfFunc func) {
+	envUninitFunc = func;
+}
+
+void setInternalPluginInstance(Plugin *plugin, void *internalInstance) {
+	plugin->internalPluginInstance = internalInstance;
+}
+
+void notifyParameterChange(Plugin *plugin, int index, float value) {
+	if(hostCallback != nullptr)
+		hostCallback((AEffect*)plugin->internalPluginInstance, audioMasterAutomate, index, 0, 0, value);
+}
 
 int getNumOpenPluginInstances() {
 	return pluginInstanceCount;
 }
-
-//hostCallback(AEffect * effect, VstInt32 opcode, VstInt32 index, VstIntPtr value, void* ptr, float opt);

@@ -1,7 +1,5 @@
 #include "mavapf/mavapf.h"
 
-#include <Windows.h>
-
 enum myParams{
 	pAmp,
 	pFreq,
@@ -21,13 +19,13 @@ public:
 		setParamValue(pFreq, 0.1f);
 	}
 
-	void processAudioBlock(double** inputs, double** outputs, int numSamples) override{
+	void processAudioBlock(double** inputs, double** outputs, int numSamples) override {
 		double *inL = inputs[0];
 		double *inR = inputs[1];
 		
 		double *outL = outputs[0];
 		double *outR = outputs[1];
-		
+
 		for(int i = 0; i < numSamples; ++i){
 			outL[i] = inL[i];
 			outR[i] = inR[i];

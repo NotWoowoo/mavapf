@@ -1,6 +1,5 @@
 #pragma once
-
-typedef void (*mavapfFunc)(void);
+#include <mavapf/host.h>
 
 class Plugin{
 public:
@@ -14,8 +13,6 @@ public:
 	virtual int getNumOutputChannels() final;
 	
 	virtual int getNumParams() final;
-
-	virtual void hostNotifyParameterChange(int index, float value) final;
 
 	virtual void setParamValue(int index, float value) final;
 	virtual float getParamValue(int index) final;
@@ -41,9 +38,11 @@ private:
 	int numParams;
 	
 	Parameter *parameters;
+
+	friend void setInternalPluginInstance(Plugin *plugin, void *internalInstance);
+	friend void notifyParameterChange(Plugin *plugin, int index, float value);
+
+	void *internalPluginInstance; //used for implimenting formats - stores poiner to format specific plugin instance
 };
 
 Plugin *createPluginInstance();
-
-void setEnvironmentInitFunc(mavapfFunc func);
-void setEnvironmentUninitFunc(mavapfFunc func);

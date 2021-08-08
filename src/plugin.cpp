@@ -1,18 +1,8 @@
 #include "mavapf/plugin.h"
-
-mavapfFunc envInitFunc = nullptr;
-mavapfFunc envUninitFunc = nullptr;
-
-void setEnvironmentInitFunc(mavapfFunc func) {
-	envInitFunc = func;
-}
-
-void setEnvironmentUninitFunc(mavapfFunc func) {
-	envUninitFunc = func;
-}
+#include "mavapf/host.h"
 
 Plugin::Plugin(int numParams, int numInputChannels, int numOutputChannels)
-	: numParams(numParams), numInputChannels(numInputChannels), numOutputChannels(numOutputChannels)
+	: numParams(numParams), numInputChannels(numInputChannels), numOutputChannels(numOutputChannels), internalPluginInstance(nullptr)
 {
 	parameters = new Parameter[numParams];
 }
@@ -46,12 +36,8 @@ int Plugin::getNumParams() {
 	return numParams;
 }
 
-void Plugin::hostNotifyParameterChange(int index, float value) {
-
-}
-
 void Plugin::setParamValue(int index, float value) {
-	hostNotifyParameterChange(index, value);
+	notifyParameterChange(this, index, value);
 	parameters[index].value = value;
 }
 
