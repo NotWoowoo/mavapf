@@ -8,6 +8,12 @@ public:
 	virtual ~Plugin();
 	
 	virtual void processAudioBlock(double** inputs, double** outputs, int numSamples);
+
+	virtual void sampleRateChanged();
+	virtual void maximumBlockSizeChanged();
+
+	virtual void switchedOn();
+	virtual void switchedOff();
 	
 	virtual int getNumInputChannels() final;
 	virtual int getNumOutputChannels() final;

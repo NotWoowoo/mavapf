@@ -31,6 +31,7 @@ public:
 			outR[i] = inR[i];
 		}
 	}
+
 };
 
 Plugin *createPluginInstance(){

@@ -8,6 +8,9 @@ int pluginInstanceCount = 0;
 
 mavapfFunc envInitFunc = nullptr;
 mavapfFunc envUninitFunc = nullptr;
+
+int maximumBlockSize = -1;
+int sampleRate = -1;
 	
 audioMasterCallback hostCallback;
 
@@ -38,33 +41,39 @@ VstIntPtr VSTCALLBACK dispatcherProc (AEffect* effect, VstInt32 opcode, VstInt32
 			if(name)
 				strncpy((char *)(ptr), name, kVstMaxParamStrLen);
 		} break;
-		
-		case effGetPlugCategory:
-			return kPlugCategEffect;
-	 
-		// request for the vendor string (usually used in the UI for plugin grouping)
-		case effGetVendorString:
-			strncpy((char *)(ptr), "woow", kVstMaxVendorStrLen);
-		break;
 			
 		case effSetSampleRate:
-			printf("sample rate: %f \n", opt);
+			sampleRate = (int)opt;
+			((Plugin*)effect->object)->sampleRateChanged();
 		break;
 		
 		case effSetBlockSize:
-			printf("block size: %i \n", (int)value);
+			maximumBlockSize = (int)value;
+			((Plugin*)effect->object)->maximumBlockSizeChanged();
+		break;
+
+		case effMainsChanged:
+			if (value == 0)
+				((Plugin*)effect->object)->switchedOff();
+			else
+				((Plugin*)effect->object)->switchedOn();
 		break;
 		
-		case effCanBeAutomated:
-			return 1;
-			
-		case effEditClose:
-			
-		break;
-		
+		//TODO aeffecx opcodes and editor
+
 		case effGetVstVersion:
 			return 2400;
 		break;
+
+		case effProcessEvents:
+			((Plugin*)(effect->object))->setParamLabel(0, "MIDI");
+			return 1;
+
+		case effCanBeAutomated:
+			return 1;
+
+		case effGetPlugCategory:
+			return kPlugCategSynth;
 			
 		// ignoring all other opcodes
 		default:
@@ -160,6 +169,7 @@ extern "C" __declspec(dllexport) AEffect *VSTPluginMain(audioMasterCallback vstH
 }
 
 //host.h IMPLIMENTATION//.......................
+
 void setEnvironmentInitFunc(mavapfFunc func) {
 	envInitFunc = func;
 }
@@ -179,4 +189,12 @@ void notifyParameterChange(Plugin *plugin, int index, float value) {
 
 int getNumOpenPluginInstances() {
 	return pluginInstanceCount;
+}
+
+int getSampleRate() {
+	return sampleRate;
+}
+
+int getMaximumBlockSize() {
+	return maximumBlockSize;
 }
