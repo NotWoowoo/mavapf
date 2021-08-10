@@ -7,8 +7,8 @@ static audioMasterCallback hostCallback;
 
 static int pluginInstanceCount = 0;
 
-mavapfFunc envInitFunc = nullptr;
-mavapfFunc envUninitFunc = nullptr;
+static mavapfFunc envInitFunc = nullptr;
+static mavapfFunc envUninitFunc = nullptr;
 
 struct pluginWrapper {
 	pluginWrapper(){
@@ -17,7 +17,7 @@ struct pluginWrapper {
 
 		plugin->hostInfo = this;
 
-		channelStats = new bool[plugin->getNumInputChannels() + plugin->getNumOutputChannels()]; //TODO set in resume
+		channelStats = new bool[plugin->getNumInputChannels() + plugin->getNumOutputChannels()];
 
 		vstEffect.magic = kEffectMagic;
 
@@ -61,7 +61,7 @@ static pluginWrapper* plug2Wrapper(Plugin* p) { return (pluginWrapper*)p->hostIn
 static AEffect* plug2AEff(Plugin* p) { return plug2Wrapper(p)->getAEffect(); }
 static Plugin* AEff2Plug(AEffect* e) { return AEff2Wrapper(e)->getPlugin(); }
 
-VstIntPtr VSTCALLBACK dispatcherProc (AEffect* effect, VstInt32 opcode, VstInt32 index, VstIntPtr value, void* ptr, float opt){
+static VstIntPtr VSTCALLBACK dispatcherProc (AEffect* effect, VstInt32 opcode, VstInt32 index, VstIntPtr value, void* ptr, float opt){
 	switch(opcode){
 		case effOpen:
 			//TODO pluginOpened and closed
@@ -103,13 +103,14 @@ VstIntPtr VSTCALLBACK dispatcherProc (AEffect* effect, VstInt32 opcode, VstInt32
 			if (value == 0){
 				AEff2Plug(effect)->pluginSwitchedToOff();
 			}else{
-				AEff2Plug(effect)->pluginSwitchedToOn();
 				if (hostCallback != nullptr) {
 					for (int i = 0; i < AEff2Plug(effect)->getNumInputChannels() + AEff2Plug(effect)->getNumOutputChannels(); ++i) {
 						bool isInput = i < AEff2Plug(effect)->getNumInputChannels();
 						AEff2Wrapper(effect)->channelStats[i] = (hostCallback(effect, audioMasterPinConnected, index - (isInput ? 0 : AEff2Plug(effect)->getNumInputChannels()), isInput, 0, 0) == 0);
 					}
 				}
+
+				AEff2Plug(effect)->pluginSwitchedToOn();
 			}
 		break;
 		
@@ -138,15 +139,15 @@ VstIntPtr VSTCALLBACK dispatcherProc (AEffect* effect, VstInt32 opcode, VstInt32
 	return 0;
 }
 
-void VSTCALLBACK setParameterProc (AEffect* effect, VstInt32 index, float parameter){
+static void VSTCALLBACK setParameterProc (AEffect* effect, VstInt32 index, float parameter){
 	AEff2Plug(effect)->setParamValue(index, parameter);
 }
 
-float VSTCALLBACK getParameterProc (AEffect* effect, VstInt32 index){
+static float VSTCALLBACK getParameterProc (AEffect* effect, VstInt32 index){
 	return AEff2Plug(effect)->getParamValue(index);
 }
 
-void VSTCALLBACK processProc (AEffect* effect, float** inputs, float** outputs, VstInt32 sampleFrames){
+static void VSTCALLBACK processProc (AEffect* effect, float** inputs, float** outputs, VstInt32 sampleFrames){
 	//Do this more eloquently later --
 	//Have a single array of numIn*sampleFrames doubles
 	const int numIn = AEff2Plug(effect)->getNumInputChannels();
@@ -181,7 +182,7 @@ void VSTCALLBACK processProc (AEffect* effect, float** inputs, float** outputs, 
 	delete[] dOutputs;
 }
 
-void VSTCALLBACK processDoubleProc (AEffect* effect, double** inputs, double** outputs, VstInt32 sampleFrames){
+static void VSTCALLBACK processDoubleProc (AEffect* effect, double** inputs, double** outputs, VstInt32 sampleFrames){
 	AEff2Plug(effect)->processAudioBlock(inputs, outputs, (int)sampleFrames);
 }
 
