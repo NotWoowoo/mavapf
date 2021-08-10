@@ -1,28 +1,75 @@
-#include <stdlib.h>
 #include <stdio.h> //io only works when testing with a CLI host like mrswatson
 #include <aeffectx.h>
 #include "mavapf/plugin.h"
 #include "mavapf/host.h"
 
-int pluginInstanceCount = 0;
+static audioMasterCallback hostCallback;
+
+static int pluginInstanceCount = 0;
 
 mavapfFunc envInitFunc = nullptr;
 mavapfFunc envUninitFunc = nullptr;
 
-int maximumBlockSize = -1;
-int sampleRate = -1;
-	
-audioMasterCallback hostCallback;
+struct pluginWrapper {
+	pluginWrapper(){
+		plugin = createPluginInstance();
+		vstEffect = {0};
+
+		plugin->hostInfo = this;
+
+		channelStats = new bool[plugin->getNumInputChannels() + plugin->getNumOutputChannels()]; //TODO set in resume
+
+		vstEffect.magic = kEffectMagic;
+
+		vstEffect.numPrograms = 0;
+		vstEffect.numParams = plugin->getNumParams();
+		vstEffect.numInputs = plugin->getNumInputChannels();
+		vstEffect.numOutputs = plugin->getNumOutputChannels();
+
+		vstEffect.flags = effFlagsCanReplacing | effFlagsCanDoubleReplacing;
+
+		vstEffect.initialDelay = plugin->getLatency();
+
+		vstEffect.object = plugin;
+		//vstEffect.user = NULL;
+
+		//TODO - have a way to set unique ID in the least platform specific way. Maybe do it after other formats have some implimentation
+		//vstEffect.uniqueID = 0;
+		vstEffect.version = 1000;
+	}
+
+	~pluginWrapper() {
+		delete plugin;
+		delete[] channelStats;
+	}
+
+	AEffect *getAEffect() { return &vstEffect; }
+	Plugin *getPlugin() { return plugin; }
+
+	Plugin *plugin;
+	AEffect vstEffect;
+
+	int maximumBlockSize = -1;
+	int sampleRate = -1;
+
+	bool *channelStats; //whether input and output channels are enabled
+};
+
+static pluginWrapper* AEff2Wrapper(AEffect* e) { return (pluginWrapper*)((Plugin*)e->object)->hostInfo; }
+static pluginWrapper* plug2Wrapper(Plugin* p) { return (pluginWrapper*)p->hostInfo; }
+
+static AEffect* plug2AEff(Plugin* p) { return plug2Wrapper(p)->getAEffect(); }
+static Plugin* AEff2Plug(AEffect* e) { return AEff2Wrapper(e)->getPlugin(); }
 
 VstIntPtr VSTCALLBACK dispatcherProc (AEffect* effect, VstInt32 opcode, VstInt32 index, VstIntPtr value, void* ptr, float opt){
 	switch(opcode){
 		case effOpen:
+			//TODO pluginOpened and closed
 			if(pluginInstanceCount == 1 && envInitFunc != nullptr) envInitFunc();
 		break;
 		
 		case effClose:
-			delete ((Plugin*) effect->object);
-			free(effect);
+			delete AEff2Wrapper(effect);
 
 			if (pluginInstanceCount == 1 && envUninitFunc != nullptr) envUninitFunc();
 			--pluginInstanceCount;
@@ -37,26 +84,33 @@ VstIntPtr VSTCALLBACK dispatcherProc (AEffect* effect, VstInt32 opcode, VstInt32
 		//break;
 		
 		case effGetParamName: {
-			const char* name = ((Plugin*)effect->object)->getParamLabel(index);
+			const char* name = AEff2Plug(effect)->getParamLabel(index);
 			if(name)
 				strncpy((char *)(ptr), name, kVstMaxParamStrLen);
 		} break;
 			
 		case effSetSampleRate:
-			sampleRate = (int)opt;
-			((Plugin*)effect->object)->sampleRateChanged();
+			AEff2Wrapper(effect)->sampleRate = (int)opt;
+			AEff2Plug(effect)->sampleRateChanged();
 		break;
 		
 		case effSetBlockSize:
-			maximumBlockSize = (int)value;
-			((Plugin*)effect->object)->maximumBlockSizeChanged();
+			AEff2Wrapper(effect)->maximumBlockSize = (int)value;
+			AEff2Plug(effect)->maximumBlockSizeChanged();
 		break;
 
 		case effMainsChanged:
-			if (value == 0)
-				((Plugin*)effect->object)->pluginSwitchedToOff();
-			else
-				((Plugin*)effect->object)->pluginSwitchedToOn();
+			if (value == 0){
+				AEff2Plug(effect)->pluginSwitchedToOff();
+			}else{
+				AEff2Plug(effect)->pluginSwitchedToOn();
+				if (hostCallback != nullptr) {
+					for (int i = 0; i < AEff2Plug(effect)->getNumInputChannels() + AEff2Plug(effect)->getNumOutputChannels(); ++i) {
+						bool isInput = i < AEff2Plug(effect)->getNumInputChannels();
+						AEff2Wrapper(effect)->channelStats[i] = (hostCallback(effect, audioMasterPinConnected, index - (isInput ? 0 : AEff2Plug(effect)->getNumInputChannels()), isInput, 0, 0) == 0);
+					}
+				}
+			}
 		break;
 		
 		//TODO aeffecx opcodes and editor
@@ -66,7 +120,7 @@ VstIntPtr VSTCALLBACK dispatcherProc (AEffect* effect, VstInt32 opcode, VstInt32
 		break;
 
 		case effProcessEvents:
-			((Plugin*)(effect->object))->setParamLabel(0, "MIDI");
+			AEff2Plug(effect)->setParamLabel(0, "MIDI");
 			return 1;
 
 		case effCanBeAutomated:
@@ -85,18 +139,18 @@ VstIntPtr VSTCALLBACK dispatcherProc (AEffect* effect, VstInt32 opcode, VstInt32
 }
 
 void VSTCALLBACK setParameterProc (AEffect* effect, VstInt32 index, float parameter){
-	((Plugin*) effect->object)->setParamValue(index, parameter);
+	AEff2Plug(effect)->setParamValue(index, parameter);
 }
 
 float VSTCALLBACK getParameterProc (AEffect* effect, VstInt32 index){
-	return ((Plugin*) effect->object)->getParamValue(index);
+	return AEff2Plug(effect)->getParamValue(index);
 }
 
 void VSTCALLBACK processProc (AEffect* effect, float** inputs, float** outputs, VstInt32 sampleFrames){
 	//Do this more eloquently later --
 	//Have a single array of numIn*sampleFrames doubles
-	const int numIn = ((Plugin*) effect->object)->getNumInputChannels();
-	const int numOut = ((Plugin*) effect->object)->getNumOutputChannels();
+	const int numIn = AEff2Plug(effect)->getNumInputChannels();
+	const int numOut = AEff2Plug(effect)->getNumOutputChannels();
 	const int numFrames = sampleFrames;
 	
 	double **dInputs = new double*[numIn];
@@ -111,7 +165,7 @@ void VSTCALLBACK processProc (AEffect* effect, float** inputs, float** outputs, 
 		for(int s = 0; s < numFrames; ++s)
 			dInputs[n][s] = (double)inputs[n][s];
 	
-	((Plugin*) effect->object)->processAudioBlock(dInputs, dOutputs, numFrames);
+	AEff2Plug(effect)->processAudioBlock(dInputs, dOutputs, numFrames);
 	
 	for(int n = 0; n < numOut; ++n)
 		for(int s = 0; s < numFrames; ++s)
@@ -128,44 +182,23 @@ void VSTCALLBACK processProc (AEffect* effect, float** inputs, float** outputs, 
 }
 
 void VSTCALLBACK processDoubleProc (AEffect* effect, double** inputs, double** outputs, VstInt32 sampleFrames){
-	((Plugin*) effect->object)->processAudioBlock(inputs, outputs, (int)sampleFrames);
+	AEff2Plug(effect)->processAudioBlock(inputs, outputs, (int)sampleFrames);
 }
 
 extern "C" __declspec(dllexport) AEffect *VSTPluginMain(audioMasterCallback vstHostCallback){
-	++pluginInstanceCount;
-	Plugin *pluginInstance = createPluginInstance();
-	
-	AEffect *effectInstance = (AEffect *)malloc(sizeof(AEffect));
-	if(!effectInstance) return nullptr;
+	++pluginInstanceCount; //call before creating pluginInstance
 
-	setInternalPluginInstance(pluginInstance, effectInstance);
+	pluginWrapper* pluginInstance = new pluginWrapper();
+
+	pluginInstance->vstEffect.dispatcher = dispatcherProc;
+	pluginInstance->vstEffect.setParameter = setParameterProc;
+	pluginInstance->vstEffect.getParameter = getParameterProc;
+	pluginInstance->vstEffect.processReplacing = processProc;
+	pluginInstance->vstEffect.processDoubleReplacing = processDoubleProc;
 
 	hostCallback = vstHostCallback;
-
-	effectInstance->magic = kEffectMagic;
 	
-	effectInstance->dispatcher = dispatcherProc;
-	effectInstance->setParameter = setParameterProc;
-	effectInstance->getParameter = getParameterProc;
-	effectInstance->processReplacing = processProc;
-	effectInstance->processDoubleReplacing = processDoubleProc;
-	
-	effectInstance->numPrograms = 0;   
-	effectInstance->numParams = pluginInstance->getNumParams();		
-	effectInstance->numInputs = pluginInstance->getNumInputChannels();		
-	effectInstance->numOutputs = pluginInstance->getNumOutputChannels();	
-	
-	effectInstance->flags = effFlagsCanReplacing | effFlagsCanDoubleReplacing;
-	
-	effectInstance->initialDelay = 0;
-	
-	effectInstance->object = pluginInstance;
-	//effectInstance->user = NULL;
-	
-	//effectInstance->uniqueID = 'woow';
-	effectInstance->version = 1000;
-	
-	return effectInstance;
+	return &pluginInstance->vstEffect;
 }
 
 //host.h IMPLIMENTATION//.......................
@@ -178,23 +211,23 @@ void setEnvironmentUninitFunc(mavapfFunc func) {
 	envUninitFunc = func;
 }
 
-void setInternalPluginInstance(Plugin *plugin, void *internalInstance) {
-	plugin->internalPluginInstance = internalInstance;
-}
-
-void notifyParameterChange(Plugin *plugin, int index, float value) {
+void hostNotifyParameterChange(Plugin *plugin, int index, float value) {
 	if(hostCallback != nullptr)
-		hostCallback((AEffect*)plugin->internalPluginInstance, audioMasterAutomate, index, 0, 0, value);
+		hostCallback(plug2AEff(plugin), audioMasterAutomate, index, 0, 0, value);
 }
 
-int getNumOpenPluginInstances() {
+int hostGetNumOpenPluginInstances() {
 	return pluginInstanceCount;
 }
 
-int getSampleRate() {
-	return sampleRate;
+int hostGetSampleRate(Plugin *plugin) {
+	return plug2Wrapper(plugin)->sampleRate;
 }
 
-int getMaximumBlockSize() {
-	return maximumBlockSize;
+int hostGetMaximumBlockSize(Plugin *plugin) {
+	return plug2Wrapper(plugin)->maximumBlockSize;
+}
+
+bool hostGetChannelStatus(Plugin* plugin, bool isInput, int index) {
+	return plug2Wrapper(plugin)->channelStats[index + (isInput ? 0 : plugin->getNumInputChannels())];
 }

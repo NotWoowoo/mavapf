@@ -17,6 +17,9 @@ public:
 	
 	virtual int getNumInputChannels() final;
 	virtual int getNumOutputChannels() final;
+
+	virtual bool isInputChannelEnabled(int index) final;
+	virtual bool isOutputChannelEnabled(int index) final;
 	
 	virtual int getNumParams() final;
 
@@ -29,7 +32,14 @@ public:
 	virtual void setParamUnits(int index, const char* units) final;
 	virtual const char* getParamUnits(int index) final;
 
-	
+	virtual void setLatency(int numSamples) final; //TODO something in aeffectx has to be done for this to work when called outside of setup
+	virtual int getLatency() final;
+
+	virtual int getSampleRate() final;
+	virtual int getMaximumBlockSize() final;
+
+	void *hostInfo; //to be used by host for any purpose - initialized to nullptr
+
 private:
 	int numInputChannels;
 	
@@ -45,10 +55,7 @@ private:
 	
 	Parameter *parameters;
 
-	friend void setInternalPluginInstance(Plugin *plugin, void *internalInstance);
-	friend void notifyParameterChange(Plugin *plugin, int index, float value);
-
-	void *internalPluginInstance; //used for implimenting formats - stores poiner to format specific plugin instance
+	int numSamplesLatency;
 };
 
 Plugin *createPluginInstance();

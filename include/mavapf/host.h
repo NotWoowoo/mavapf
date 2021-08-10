@@ -8,14 +8,13 @@ void setEnvironmentInitFunc(mavapfFunc func);
 void setEnvironmentUninitFunc(mavapfFunc func);
 
 //These functions are used by base class Plugin
+void hostNotifyParameterChange(Plugin *plugin, int index, float value);
 
-void setInternalPluginInstance(Plugin *plugin, void *internalInstance);
+bool hostGetChannelStatus(Plugin *plugin, bool isInput /*otherwise output*/, int index);
 
-void notifyParameterChange(Plugin *plugin, int index, float value);
+int hostGetSampleRate(Plugin *plugin);
+int hostGetMaximumBlockSize(Plugin* plugin);
 
 //Remaining functions can be called in subclasses of Plugin
 
-int getNumOpenPluginInstances();
-
-int getSampleRate();
-int getMaximumBlockSize();
+int hostGetNumOpenPluginInstances();

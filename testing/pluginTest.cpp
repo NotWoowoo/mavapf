@@ -35,5 +35,5 @@ public:
 };
 
 Plugin *createPluginInstance(){
-	return new myPlugin();
+	return new myPlugin(); //delete called by host
 }
