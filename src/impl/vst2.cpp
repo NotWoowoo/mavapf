@@ -54,9 +54,9 @@ VstIntPtr VSTCALLBACK dispatcherProc (AEffect* effect, VstInt32 opcode, VstInt32
 
 		case effMainsChanged:
 			if (value == 0)
-				((Plugin*)effect->object)->switchedOff();
+				((Plugin*)effect->object)->pluginSwitchedToOff();
 			else
-				((Plugin*)effect->object)->switchedOn();
+				((Plugin*)effect->object)->pluginSwitchedToOn();
 		break;
 		
 		//TODO aeffecx opcodes and editor

@@ -16,8 +16,8 @@ void Plugin::processAudioBlock(double** inputs, double** outputs, int numSamples
 void Plugin::sampleRateChanged() {}
 void Plugin::maximumBlockSizeChanged() {}
 
-void Plugin::switchedOn() {}
-void Plugin::switchedOff() {}
+void Plugin::pluginSwitchedToOn() {}
+void Plugin::pluginSwitchedToOff() {}
 
 int Plugin::getNumInputChannels() {
 	return numInputChannels;

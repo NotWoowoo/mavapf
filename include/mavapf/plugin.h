@@ -12,8 +12,8 @@ public:
 	virtual void sampleRateChanged();
 	virtual void maximumBlockSizeChanged();
 
-	virtual void switchedOn();
-	virtual void switchedOff();
+	virtual void pluginSwitchedToOn();
+	virtual void pluginSwitchedToOff();
 	
 	virtual int getNumInputChannels() final;
 	virtual int getNumOutputChannels() final;
