@@ -1,22 +1,27 @@
 #include "mavapf/mavapf.h"
 
+#include <math.h>
+
 enum myParams{
-	pAmp,
-	pFreq,
+	pMix,
 	
 	pNumParams
 };
+
+static float clamp(float f, float low, float high) {
+	return fmin(high, fmax(low, f));
+}
 
 class myPlugin : public Plugin {
 public:
 	myPlugin()
 		: Plugin(pNumParams, 2, 2)
 	{
-		setParamLabel(pAmp, "Ampl");
-		setParamValue(pAmp, 0.1f);
+		setParamLabel(pMix, "mix");
+		setParamValue(pMix, 0.5f);
 
-		setParamLabel(pFreq, "freq");
-		setParamValue(pFreq, 0.1f);
+		//setParamLabel(pFreq, "freq");
+		//setParamValue(pFreq, 0.1f);
 	}
 
 	void processAudioBlock(double** inputs, double** outputs, int numSamples) override {
@@ -27,8 +32,14 @@ public:
 		double *outR = outputs[1];
 
 		for(int i = 0; i < numSamples; ++i){
-			outL[i] = inL[i];
-			outR[i] = inR[i];
+			float mono = (inL[i] + inR[i]) / 2.f;
+			float mix = getParamValue(pMix);
+
+			float leftAmp = (-1*clamp(mono, -1.f, 0.f) == 0) ? mix : 1-mix;
+			float rightAmp = (clamp(mono, 0.f, 1.f) == 0) ? mix : 1-mix;
+
+			outL[i] = inL[i] * leftAmp;
+			outR[i] = inR[i] * rightAmp;
 		}
 	}
 

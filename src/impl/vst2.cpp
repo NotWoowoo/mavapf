@@ -64,7 +64,6 @@ static Plugin* AEff2Plug(AEffect* e) { return AEff2Wrapper(e)->getPlugin(); }
 static VstIntPtr VSTCALLBACK dispatcherProc (AEffect* effect, VstInt32 opcode, VstInt32 index, VstIntPtr value, void* ptr, float opt){
 	switch(opcode){
 		case effOpen:
-			//TODO pluginOpened and closed
 			if(pluginInstanceCount == 1 && envInitFunc != nullptr) envInitFunc();
 		break;
 		

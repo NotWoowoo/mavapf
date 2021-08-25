@@ -1,23 +1,43 @@
+// plugin.h contains an undefined function for the plugin to impliment, and a Plugin class to extend
+// The host only needs to be able to interact with class Plugin, and to call Plugin *createPluginInstance()
+
 #pragma once
 #include <mavapf/host.h>
 
+/// Uses:
+/// to store plugin instance data
+/// to interface with a plugin
+/// to be a base class for plugin implimentation
+/// 
+/// inherit this class and return it in Plugin *createPluginInstance() to impliment a plugin
 class Plugin{
 public:
+	/// Call in subclass to initialize plugin. 
+	/// The number of channels can't be changed after initialization (could be changed in future under some circumstances).
+	/// @param numParams - the number of parameters for this plugin
+	/// @param numInputChannels - the number of audio input channels
+	/// @param numOutputChannels - the number of audio output channels
 	Plugin(int numParams, int numInputChannels = 2, int numOutputChannels = 2);
 	
 	virtual ~Plugin();
 	
-	virtual void processAudioBlock(double** inputs, double** outputs, int numSamples);
+	/// Impliment to process audio
+	/// @param inputs - audio data to process - access via inputs[channel_number][sample_index]
+	/// @param outputs - where to write output data - access via outputs[channel_number][sample_index]
+	/// @param numSamples - the number of samples in inputs and outputs
+	virtual void processAudioBlock(double **inputs, double **outputs, int numSamples);
 
+	
 	virtual void sampleRateChanged();
 	virtual void maximumBlockSizeChanged();
 
-	virtual void pluginSwitchedToOn();
+	virtual void pluginSwitchedToOn(); 
 	virtual void pluginSwitchedToOff();
 	
 	virtual int getNumInputChannels() final;
 	virtual int getNumOutputChannels() final;
-
+	
+	// These functions are only guaranteed to work when called outside of the constructor
 	virtual bool isInputChannelEnabled(int index) final;
 	virtual bool isOutputChannelEnabled(int index) final;
 	
@@ -38,7 +58,8 @@ public:
 	virtual int getSampleRate() final;
 	virtual int getMaximumBlockSize() final;
 
-	void *hostInfo; //to be used by host for any purpose - initialized to nullptr
+	///to be used by host for any purpose - initialized to nullptr by plugin
+	void *hostInfo;
 
 private:
 	int numInputChannels;
